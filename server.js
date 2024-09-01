@@ -10,7 +10,7 @@ import { notFound,errorHandler } from './middleware/errorMiddleware.js';
 import cookieParser   from 'cookie-parser';
 import bodyParser from 'body-parser';
 import { fileURLToPath } from 'url';
-// import cors from "cors";
+import cors from "cors";
 
 
 
@@ -30,10 +30,22 @@ const port = process.env.PORT || 3000;
 
 connectDB();
 const app = express();
+
+app.use(
+    cors({
+        origin: [
+            "http://localhost:5173",
+        ],
+        methods:['GET','POST','PUT','DELETE'],
+        credentials: true,
+        // allowedHeaders: ["Content-Type", "Authorization"],
+    })
+);
+
+app.use('*', cors());
 app.use(express.json({limit:'2mb'}));
 app.use(express.urlencoded({extended:true}))
 app.use(cookieParser());
-// app.use(cors());
 
 // app.use('/api/products/test', asyncHandler(async(req,res) =>{
 //     console.log('ok ok');
@@ -57,14 +69,14 @@ app.use('/api/upload',uploadRoutes);
 app.get('/api/config/paypal',(req,res) => res.send({clientId:process.env.PAYPAL_CLIENT_ID}))
 
 
-if(process.env.NODE_ENV === 'production'){
+// if(process.env.NODE_ENV === 'production'){
     
-    app.use(express.static(path.join(__dirname, "../eCommerce-redux-toolkit/dist")));
+//     app.use(express.static(path.join(__dirname, "../eCommerce-redux-toolkit/dist")));
 
-    app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "../eCommerce-redux-toolkit/dist/index.html"));
-    });
-}
+//     app.get("*", (req, res) => {
+//     res.sendFile(path.resolve(__dirname, "../eCommerce-redux-toolkit/dist/index.html"));
+//     });
+// }
 app.use(notFound);
 app.use(errorHandler);
 
