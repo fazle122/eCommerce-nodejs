@@ -3,7 +3,6 @@ import Product from "../models/productModel.js";
 import Order from "../models/orderModel.js";
 import ApiFilters from "../utils/apiFilters.js";
 import ErrorHandler from "../utils/errorHandlers.js";
-import productData from "../data/products.js";
 import { delete_file, upload_file } from "../utils/cloudinary.js";
 
 

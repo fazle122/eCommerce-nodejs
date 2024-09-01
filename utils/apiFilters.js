@@ -1,4 +1,3 @@
-import productData from "../data/products.js";
 
 
 class ApiFilters{
