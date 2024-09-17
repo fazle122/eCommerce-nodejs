@@ -36,6 +36,7 @@ app.use(
     cors({
         origin: [
             "http://localhost:5173",
+            "https://e-ccommerce-nodejs.vercel.app"
         ],
         methods:['GET','POST','PUT','DELETE'],
         credentials: true,
