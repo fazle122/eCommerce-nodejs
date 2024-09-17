@@ -25,7 +25,8 @@ process.on('uncaughtException',(err) =>{
 })
 
 // dotenv.config();
-dotenv.config({path:"backend/.env"});
+// dotenv.config({path:"backend/.env"});
+dotenv.config({path:".env"});
 const port = process.env.PORT || 3000;
 
 connectDB();
@@ -42,19 +43,10 @@ app.use(
     })
 );
 
-app.use('*', cors());
+// app.use('*', cors());
 app.use(express.json({limit:'2mb'}));
 app.use(express.urlencoded({extended:true}))
 app.use(cookieParser());
-
-// app.use('/api/products/test', asyncHandler(async(req,res) =>{
-//     console.log('ok ok');
-//    const prodArray = products;
-//     res.status(200).json({products:prodArray});
-// }));
-
-
-// app.use(bodyParser.json({type:'multipart/form-data'}));
 
 
 
@@ -69,14 +61,6 @@ app.use('/api/upload',uploadRoutes);
 app.get('/api/config/paypal',(req,res) => res.send({clientId:process.env.PAYPAL_CLIENT_ID}))
 
 
-// if(process.env.NODE_ENV === 'production'){
-    
-//     app.use(express.static(path.join(__dirname, "../eCommerce-redux-toolkit/dist")));
-
-//     app.get("*", (req, res) => {
-//     res.sendFile(path.resolve(__dirname, "../eCommerce-redux-toolkit/dist/index.html"));
-//     });
-// }
 app.use(notFound);
 app.use(errorHandler);
 
