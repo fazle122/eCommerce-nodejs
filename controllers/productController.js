@@ -27,7 +27,7 @@ import { delete_file, upload_file } from "../utils/cloudinary.js";
 const getProducts1 = asyncHandler(async (req,res) =>{
     console.log('fetching products..')
 
-    const pageSize = 4;
+    const pageSize = 10;
     const page = Number(req.query.pageNumber || 1);
     const keyword = req.query.keyword ? {name:{$regex:req.query.keyword,$options:'i'}} : {};
     const count = await Product.countDocuments({...keyword});
@@ -44,7 +44,7 @@ const getProducts1 = asyncHandler(async (req,res) =>{
 
 const getProducts = asyncHandler(async (req,res) =>{
     console.log('fetching products..')
-    const pageSize = 4;
+    const pageSize = 10;
     const page = Number(req.query.pageNumber || 1);
     // const apiFIlters = new ApiFilters(Product,req.query).search().filter();
     const apiFIlters = new ApiFilters(Product, req.query).search().filter();
@@ -65,14 +65,29 @@ const getProducts = asyncHandler(async (req,res) =>{
 })
 
 
-const getProduct = asyncHandler(async (req,res) =>{
-    const product = await Product.findById(req.params.id).populate('reviews.user');
-    if(product){
-        res.status(200).json(product);
-    }else{
-        // return next(new ErrorHandler('Product not found',404));
-        new ErrorHandler('Product not found',404);
-    }
+// const getProduct = asyncHandler(async (req,res) =>{
+//   console.log('fetching product by id..',req.params)
+
+//     const product = await Product.findById(req.params.id).populate('reviews.user');
+//     if(product){
+//         res.status(200).json(product);
+//     }else{
+//         // return next(new ErrorHandler('Product not found',404));
+//         new ErrorHandler('Product not found',404);
+//     }
+// })
+
+
+const getProductBySlug = asyncHandler(async (req,res) =>{
+  console.log('fetching product by slug..',req.params.slug)
+
+  const product = await Product.findOne({slug:req.params.slug}).populate('reviews.user');
+  if(product){
+      res.status(200).json(product);
+  }else{
+      // return next(new ErrorHandler('Product not found',404));
+      new ErrorHandler('Product not found',404);
+  }
 })
 
 const getTopProducts = asyncHandler(async (req,res) =>{
@@ -105,7 +120,7 @@ const createProduct = asyncHandler(async(req,res) =>{
     // const createProduct = await product.save();
 
     const createProduct = await Product.create(req.body);
-
+    console.log('new product',createProduct);
     if(createProduct){
         res.status(201).json(createProduct);
     }else{
@@ -202,10 +217,11 @@ const updateProduct = asyncHandler(async(req,res) =>{
 
 
 const deleteProduct = asyncHandler(async(req,res) =>{
-    console.log('updating products..')
+    console.log('deleting products..')
     const product = await Product.findById(req.params.id);
     if(product){
          await Product.deleteOne({_id:product._id});
+         console.log('deleted')
 
          for(let i=0; i<product.images.length; i++){
           await delete_file(product.images[i].id);
@@ -306,4 +322,4 @@ const deleteProductReview = asyncHandler(async (req, res) => {
 
 
 
-export {getProducts,getProduct,getTopProducts,createProduct,uploadProductImages,updateProduct,deleteProduct,canUserReview,createProductReview,deleteProductReview}
+export {getProducts,getProductBySlug,getTopProducts,createProduct,uploadProductImages,updateProduct,deleteProduct,canUserReview,createProductReview,deleteProductReview}

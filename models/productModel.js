@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import slugify from "slugify";
 
 const reviewSchema = mongoose.Schema({
     user:{
@@ -31,21 +32,17 @@ const productSchema = new mongoose.Schema({
         type:String,
         required:[true,'product name is required'],
     },
+    slug: {
+        type:String,
+        // unique:true,
+        // required:true
+    },
     images:[
         {
             id:String,
             url:String
-            // required:true,
         }
     ],
-
-    //==========//
-    // image:[
-    //     {
-    //         public_id:String,
-    //         url:String
-    //     }
-    // ],
     brand:{
         type:String,
         required:[true,'brand name is required'],
@@ -91,6 +88,15 @@ const productSchema = new mongoose.Schema({
     },
 
 },{timestamps:true})
+
+
+productSchema.pre("save",function(next) {
+    console.log('slug created')
+    this.slug = slugify(this.name,{replacement:'_', lower: true, strict: true, trim: true });
+    next();
+});
+
+
 
 const Product = mongoose.model("Product",productSchema)
 export default Product;
