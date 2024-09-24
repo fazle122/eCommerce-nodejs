@@ -10,7 +10,8 @@ import {loginUser,
     updateUserByAdmin,
     deleteUserByAdmin,
     getGoogleClientId,
-    googleLogin} from '../controllers/userController.js';
+    googleLogin,
+    addFavourite} from '../controllers/userController.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 
 const router = express.Router();
@@ -32,6 +33,7 @@ router.post('/logout',logoutUser);
 router.post('/login',loginUser);
 router.post('/googleLogin',googleLogin);
 router.route('/profile').get(protect,getUserProfile).put(protect,updateUserProfile);
+router.route('/addToFav').put(protect,addFavourite);
 // router.route('/:id').get(protect,adminProtect,getUserByAdmin).delete(protect,adminProtect,deleteUserByAdmin);
 router.route('/:id').get(protect,adminProtect,getUserByAdmin).put(protect,adminProtect,updateUserByAdmin).delete(protect,adminProtect,deleteUserByAdmin);
 

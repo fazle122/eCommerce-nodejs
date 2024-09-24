@@ -3,6 +3,8 @@ import User from '../models/userModel.js'
 import jwt from 'jsonwebtoken';
 import generateToken from "../utils/generateToken.js";
 import ErrorHandler from "../utils/errorHandlers.js";
+import mongoose from "mongoose";
+
 
 
 
@@ -133,7 +135,8 @@ const getUserProfile = asyncHandler(async(req,res,next) =>{
             _id:user._id,
             name:user.name,
             email:user.email,
-            isAdmin:user.isAdmin
+            isAdmin:user.isAdmin,
+            favourite:user.favourite
          });
 
     }else{
@@ -158,6 +161,34 @@ const updateUserProfile = asyncHandler(async(req,res,next) =>{
             email:updatedUser.email,
             isAdmin:updatedUser.isAdmin
          });
+
+    }else{
+        es.status(400);
+        throw new Error('User not found');
+    }
+    
+})
+
+const addFavourite = asyncHandler(async(req,res,next) =>{ 
+    console.log('adding fav item: ',req.body.slug.toString());
+    const user= await User.findById(req.user._id);
+    if(user){
+        // const existingProd = await User.find({}, {favourite:{$elemMatch:{$eq:{slug: req.body.slug}}}})
+        const existingProds = user.favourite;
+        const ifExist = existingProds.some((el) => el._id == req.body._id);
+        console.log('existingProd',ifExist)
+        if(!ifExist){
+            user.favourite.push(req.body);
+            const updatedUser = await user.save();
+            res.status(200).json({
+                _id:updatedUser._id,
+                name:updatedUser.name,
+                email:updatedUser.email,
+                favourite:updatedUser.favourite
+            });
+        }else{
+            res.status(200).json({message:"Item already added"});
+        }
 
     }else{
         es.status(400);
@@ -231,4 +262,4 @@ const deleteUserByAdmin = asyncHandler(async(req,res,next) =>{
 })
 
 
-export {getGoogleClientId,loginUser,googleLogin,registerUser,logoutUser,getUserProfile,updateUserProfile,getAllUserByAdmin,getUserByAdmin,updateUserByAdmin,deleteUserByAdmin}
+export {getGoogleClientId,loginUser,googleLogin,registerUser,logoutUser,getUserProfile,updateUserProfile,addFavourite,getAllUserByAdmin,getUserByAdmin,updateUserByAdmin,deleteUserByAdmin}
