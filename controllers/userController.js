@@ -147,6 +147,8 @@ const getUserProfile = asyncHandler(async(req,res,next) =>{
 })
 
 const updateUserProfile = asyncHandler(async(req,res,next) =>{ 
+    console.log('edit profile');
+
     const user= await User.findById(req.user._id);
     if(user){
         user.name = req.body.name || user.name;
@@ -167,6 +169,24 @@ const updateUserProfile = asyncHandler(async(req,res,next) =>{
         throw new Error('User not found');
     }
     
+})
+
+const updatePassword = asyncHandler(async(req,res) =>{
+
+    console.log('edit password',req.body.password);
+    const email = req.user.email;
+
+    const {oldPassword,password} = req.body;
+    const user = await User.findOne({email});
+
+    if(user &&  (await user.matchPassword(oldPassword))){
+        user.password = password;
+        const response = user.save();
+        res.status(201).json({message:"password updated successfully",data:response});
+    }else{
+        res.status(401).json({message:"password did not matched"})
+    }
+  
 })
 
 const addFavourite = asyncHandler(async(req,res,next) =>{ 
@@ -262,4 +282,4 @@ const deleteUserByAdmin = asyncHandler(async(req,res,next) =>{
 })
 
 
-export {getGoogleClientId,loginUser,googleLogin,registerUser,logoutUser,getUserProfile,updateUserProfile,addFavourite,getAllUserByAdmin,getUserByAdmin,updateUserByAdmin,deleteUserByAdmin}
+export {getGoogleClientId,loginUser,googleLogin,registerUser,logoutUser,getUserProfile,updateUserProfile,updatePassword,addFavourite,getAllUserByAdmin,getUserByAdmin,updateUserByAdmin,deleteUserByAdmin}
