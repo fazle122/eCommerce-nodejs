@@ -1,5 +1,5 @@
-import asyncHandler from "../middleware/asyncHandler.js";
-import Order from "../models/orderModel.js";
+import asyncHandler from "../../middleware/asyncHandler.js";
+import Order from "./model.js";
 
 
 const createOrder = asyncHandler(async (req,res) =>{
