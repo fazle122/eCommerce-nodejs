@@ -1,284 +1,345 @@
-import User from './model.js'
-import {generateToken} from "./service.js";
+import User from "./model.js";
+import { generateToken, sendEmail } from "./service.js";
 import ErrorHandler from "../../utils/errorHandlers.js";
-import asyncHandler from '../../middleware/asyncHandler.js';
+import asyncHandler from "../../middleware/asyncHandler.js";
+import { getResetPasswordTemplate } from "../../utils/emailTemplates.js";
+import crypto from "crypto";
 
+const getGoogleClientId = asyncHandler(async (req, res, next) => {
+  res.status(200).json({ clientId: process.env.GOOGLE_CLIENT_ID });
+});
 
+const loginUser = asyncHandler(async (req, res, next) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
 
+  if (user && (await user.matchPassword(password))) {
+    generateToken(res, user._id);
 
-const getGoogleClientId = asyncHandler(async(req,res,next) =>{
-    res.status(200).json({clientId:process.env.GOOGLE_CLIENT_ID});
-})
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+    });
+  } else {
+    throw new ErrorHandler("Invalid email or password", 401);
 
-const loginUser = asyncHandler(async(req,res,next) =>{
-    const {email,password} = req.body;
-    const user= await User.findOne({email});
+    // res.status(401);
+    // throw new Error('Invalid email or password');
+  }
+});
 
-    if(user && (await user.matchPassword(password))){
-        generateToken(res,user._id);
-        
+const googleLogin = asyncHandler(async (req, res, next) => {
+  const { googleId, email, name, googleImage } = req.body;
+  console.log("infofrom server", req.body);
+
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      existingUser.googleId = googleId;
+      existingUser.googleImage = googleImage;
+      await existingUser.save();
+      generateToken(res, existingUser._id);
+
+      res.status(200).json({
+        _id: existingUser._id,
+        name: existingUser.name,
+        email: existingUser.email,
+        googleId: existingUser.googleId,
+        googleImage: existingUser.googleImage,
+        isAdmin: existingUser.isAdmin,
+      });
+    } else {
+      const user = await User.findOne({ googleId });
+      console.log(user);
+      if (user) {
+        generateToken(res, user._id);
 
         res.status(200).json({
-            _id:user._id,
-            name:user.name,
-            email:user.email,
-            isAdmin:user.isAdmin
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          googleId: user.googleId,
+          googleImage: user.googleImage,
+          isAdmin: user.isAdmin,
         });
-    }else{
-        throw new ErrorHandler('Invalid email or password',401);
+      } else {
+        console.log("creating new user...");
+        const newUser = await User.create({
+          email,
+          name,
+          googleId,
+          googleImage,
+        });
+        console.log(newUser);
+        generateToken(res, newUser._id);
 
-        // res.status(401);
-        // throw new Error('Invalid email or password');
-    }
-})
-
-
-const googleLogin = asyncHandler(async(req,res,next) =>{
-    const {googleId,email,name,googleImage } = req.body;
-    console.log('infofrom server',req.body); 
-
-    try{
-        const existingUser = await User.findOne({email});
-        if(existingUser){
-            existingUser.googleId = googleId;
-            existingUser.googleImage = googleImage;
-            await existingUser.save();
-            generateToken(res,existingUser._id);
-        
-                res.status(200).json({
-                    _id:existingUser._id,
-                    name:existingUser.name,
-                    email:existingUser.email,
-                    googleId:existingUser.googleId,
-                    googleImage:existingUser.googleImage,
-                    isAdmin:existingUser.isAdmin 
-                });
-
-        }else{
-            const user= await User.findOne({googleId});
-            console.log(user);
-            if(user){
-                generateToken(res,user._id);
-        
-                res.status(200).json({
-                    _id:user._id,
-                    name:user.name,
-                    email:user.email,
-                    googleId:user.googleId,
-                    googleImage:user.googleImage,
-                    isAdmin:user.isAdmin 
-                });
-            }else{
-                console.log('creating new user...')
-                const newUser =  await  User.create({
-                    email,name,googleId,googleImage
-                });     
-                console.log(newUser);
-                generateToken(res,newUser._id);
-
-                res.status(200).json({
-                    _id:newUser._id,
-                    name:newUser.name,
-                    email:newUser.email,
-                    googleId:newUser.googleId,
-                    googleImage:newUser.googleImage,
-                    isAdmin:newUser.isAdmin 
-                });
-
-            }
-        }
-        
-
-    }catch(err){
-        res.status(401);
-        throw new Error(err);
-    }
-})
-
-const registerUser = asyncHandler(async(req,res,next) =>{
-    const {name,email,password} = req.body;
-
-    const userExists = await User.findOne({email});
-    if(userExists){
-        res.status(400);
-        throw new Error("user already exists");
-    }
-    const user= await User.create({name,email,password});
-    if(user){
-        generateToken(res,user._id);
-         res.status(201).json({
-            _id:user._id,
-            name:user.name,
-            email:user.email,
-            isAdmin:user.isAdmin
-         });
-
-    }else{
-        es.status(400);
-        throw new Error('Invalid user data');
-    }
-    
-})
-
-
-const logoutUser = asyncHandler(async(req,res,next) =>{
-    res.cookie('jwt','',{httpOnly:true,expires:new Date(0)});
-    res.status(200).json({message:'logged out succesfully '})
-    
-})
-
-const getUserProfile = asyncHandler(async(req,res,next) =>{
-    const user= await User.findById(req.user._id);
-    if(user){
-         res.status(200).json({
-            _id:user._id,
-            name:user.name,
-            email:user.email,
-            isAdmin:user.isAdmin,
-            favourite:user.favourite
-         });
-
-    }else{
-        es.status(400);
-        throw new Error('User not found');
-    }
-    
-})
-
-const updateUserProfile = asyncHandler(async(req,res,next) =>{ 
-    console.log('edit profile');
-
-    const user= await User.findById(req.user._id);
-    if(user){
-        user.name = req.body.name || user.name;
-        user.email = req.body.email || user.email;
-        if(req.body.password){
-            user.password = req.body.password;
-        }
-        const updatedUser = await user.save();
         res.status(200).json({
-            _id:updatedUser._id,
-            name:updatedUser.name,
-            email:updatedUser.email,
-            isAdmin:updatedUser.isAdmin
-         });
-
-    }else{
-        es.status(400);
-        throw new Error('User not found');
+          _id: newUser._id,
+          name: newUser.name,
+          email: newUser.email,
+          googleId: newUser.googleId,
+          googleImage: newUser.googleImage,
+          isAdmin: newUser.isAdmin,
+        });
+      }
     }
-    
-})
+  } catch (err) {
+    res.status(401);
+    throw new Error(err);
+  }
+});
 
-const updatePassword = asyncHandler(async(req,res) =>{
+const registerUser = asyncHandler(async (req, res, next) => {
+  const { name, email, password } = req.body;
 
-    console.log('edit password',req.body.password);
-    const email = req.user.email;
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    res.status(400);
+    throw new Error("user already exists");
+  }
+  const user = await User.create({ name, email, password });
+  if (user) {
+    generateToken(res, user._id);
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+    });
+  } else {
+    res.status(400);
+    throw new Error("Invalid user data");
+  }
+});
 
-    const {oldPassword,password} = req.body;
-    const user = await User.findOne({email});
+const logoutUser = asyncHandler(async (req, res, next) => {
+  res.cookie("jwt", "", { httpOnly: true, expires: new Date(0) });
+  res.status(200).json({ message: "logged out succesfully " });
+});
 
-    if(user &&  (await user.matchPassword(oldPassword))){
-        user.password = password;
-        const response = user.save();
-        res.status(201).json({message:"password updated successfully",data:response});
-    }else{
-        res.status(401).json({message:"password did not matched"})
+const getUserProfile = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  if (user) {
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      favourite: user.favourite,
+    });
+  } else {
+    res.status(400);
+    throw new Error("User not found");
+  }
+});
+
+const updateUserProfile = asyncHandler(async (req, res, next) => {
+  console.log("edit profile");
+
+  const user = await User.findById(req.user._id);
+  if (user) {
+    user.name = req.body.name || user.name;
+    user.email = req.body.email || user.email;
+    if (req.body.password) {
+      user.password = req.body.password;
     }
-  
-})
+    const updatedUser = await user.save();
+    res.status(200).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      isAdmin: updatedUser.isAdmin,
+    });
+  } else {
+    res.status(400);
+    throw new Error("User not found");
+  }
+});
 
-const addFavourite = asyncHandler(async(req,res,next) =>{ 
-    console.log('adding fav item: ',req.body.slug.toString());
-    const user= await User.findById(req.user._id);
-    if(user){
-        // const existingProd = await User.find({}, {favourite:{$elemMatch:{$eq:{slug: req.body.slug}}}})
-        const existingProds = user.favourite;
-        const ifExist = existingProds.some((el) => el._id == req.body._id);
-        console.log('existingProd',ifExist)
-        if(!ifExist){
-            user.favourite.push(req.body);
-            const updatedUser = await user.save();
-            res.status(200).json({
-                _id:updatedUser._id,
-                name:updatedUser.name,
-                email:updatedUser.email,
-                favourite:updatedUser.favourite
-            });
-        }else{
-            res.status(200).json({message:"Item already added"});
-        }
+const updatePassword = asyncHandler(async (req, res) => {
+  console.log("edit password", req.body.password);
+  const email = req.user.email;
 
-    }else{
-        es.status(400);
-        throw new Error('User not found');
+  const { oldPassword, password } = req.body;
+  const user = await User.findOne({ email });
+
+  if (user && (await user.matchPassword(oldPassword))) {
+    user.password = password;
+    const response = user.save();
+    res
+      .status(201)
+      .json({ message: "password updated successfully", data: response });
+  } else {
+    res.status(401).json({ message: "password did not matched" });
+  }
+});
+
+const addFavourite = asyncHandler(async (req, res, next) => {
+  console.log("adding fav item: ", req.body.slug.toString());
+  const user = await User.findById(req.user._id);
+  if (user) {
+    // const existingProd = await User.find({}, {favourite:{$elemMatch:{$eq:{slug: req.body.slug}}}})
+    const existingProds = user.favourite;
+    const ifExist = existingProds.some((el) => el._id == req.body._id);
+    console.log("existingProd", ifExist);
+    if (!ifExist) {
+      user.favourite.push(req.body);
+      const updatedUser = await user.save();
+      res.status(200).json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        favourite: updatedUser.favourite,
+      });
+    } else {
+      res.status(200).json({ message: "Item already added" });
     }
-    
-})
+  } else {
+    res.status(400);
+    throw new Error("User not found");
+  }
+});
 
-const getAllUserByAdmin = asyncHandler(async(req,res,next) =>{
-    const users = await User.find({});
-    if(users){
-        res.status(200).json(users)
-    }else{
-        es.status(400);
-        throw new Error('Users not found');
+const getAllUserByAdmin = asyncHandler(async (req, res, next) => {
+  const users = await User.find({});
+  if (users) {
+    res.status(200).json(users);
+  } else {
+    res.status(400);
+    throw new Error("Users not found");
+  }
+});
+
+const getUserByAdmin = asyncHandler(async (req, res, next) => {
+  console.log("admin fetching user...");
+
+  const user = await User.findById(req.params.id).select("-password");
+  if (user) {
+    res.status(200).json(user);
+  } else {
+    res.status(400);
+    throw new Error("User not found");
+  }
+});
+
+const updateUserByAdmin = asyncHandler(async (req, res, next) => {
+  console.log("updating user...");
+  const user = await User.findById(req.params.id);
+
+  if (user) {
+    user.name = req.body.name || user.name;
+    user.email = req.body.email || user.email;
+    user.isAdmin = Boolean(req.body.isAdmin);
+    const updatedUser = await user.save();
+    res.status(201).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      isAdmin: updatedUser.isAdmin,
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
+  }
+});
+
+const deleteUserByAdmin = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+  if (user) {
+    if (user.isAdmin) {
+      res.status(400);
+      throw new Error("Cannot delete admin");
+    } else {
+      await User.deleteOne({ _id: user._id });
+      res.status(201).json({ message: "User deleted successfully" });
     }
-    
-})
+  } else {
+    res.status(400);
+    throw new Error("User not found");
+  }
+});
 
-const getUserByAdmin = asyncHandler(async(req,res,next) =>{
-    console.log('admin fetching user...')
+const passwordforget = asyncHandler(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
 
-    const user = await User.findById(req.params.id).select('-password');
-    if(user){
-        res.status(200).json(user)
-    }else{
-        es.status(400);
-        throw new Error('User not found');
-    }
-})
+  if (!user) {
+    res.status(400);
+    throw new Error("User not found");
+  }
 
-const updateUserByAdmin = asyncHandler(async(req,res,next) =>{
-    console.log('updating user...')
-    const user = await User.findById(req.params.id);
+  const resetToken = user.getResetPasswordToken();
+  await user.save();
+  const resetUrl = `${process.env.CLIENT_URL_LOCAL}/resetPass/${resetToken}`;
+  //   const resetUrl = `${process.env.CLIENT_URL_LOCAL}/password/reset/${resetToken}`;
+  // const resetUrl = `${process.env.SERVER_URL}/api/users/password/reset/${resetToken}`;
+  console.log("reset url", resetUrl);
+  const message = getResetPasswordTemplate(user?.name, resetUrl);
+  try {
+    console.log(user.email);
+    await sendEmail({
+      email: user.email,
+      subject: "E-Shop password recovery",
+      message,
+    });
 
-    if(user){
-        user.name = req.body.name || user.name;
-        user.email = req.body.email || user.email;
-        user.isAdmin = Boolean(req.body.isAdmin);
-         const updatedUser =await user.save();
-        res.status(201).json({
-            _id:updatedUser._id,
-            name:updatedUser.name,
-            email:updatedUser.email,
-            isAdmin:updatedUser.isAdmin 
-        })
-        
-    }else{
-        es.status(404);
-        throw new Error('User not found');
-    }
-})
+    res.status(200).json({ message: `Email send to : ${user.email}` });
+  } catch (err) {
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
 
+    await user.save();
+    return next(new Error(err?.message, 500));
+  }
+});
 
-const deleteUserByAdmin = asyncHandler(async(req,res,next) =>{
+const resetPassword = asyncHandler(async (req, res, next) => {
+  console.log("reset pass");
+  const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
+  console.log("compare has token", resetPasswordToken);
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+  console.log("user", user?.name);
+  console.log("new password", req.body);
 
+  if (!user) {
+    return next(
+      new Error("Password reset token is invalid or has been expired", 400)
+    );
+  }
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+  //   generateToken(res, user._id);
+  res.status(201).json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    isAdmin: user.isAdmin,
+  });
+});
 
-    const user = await User.findById(req.params.id);
-    if(user){
-        if(user.isAdmin){
-            res.status(400);
-            throw new Error('Cannot delete admin')
-        }else{
-            await User.deleteOne({_id:user._id});
-            res.status(201).json({message:'User deleted successfully'})
-        }
-    }else{
-        es.status(400);
-        throw new Error('User not found');
-    }
-})
-
-
-export {getGoogleClientId,loginUser,googleLogin,registerUser,logoutUser,getUserProfile,updateUserProfile,updatePassword,addFavourite,getAllUserByAdmin,getUserByAdmin,updateUserByAdmin,deleteUserByAdmin}
+export {
+  getGoogleClientId,
+  loginUser,
+  googleLogin,
+  registerUser,
+  logoutUser,
+  getUserProfile,
+  updateUserProfile,
+  updatePassword,
+  addFavourite,
+  getAllUserByAdmin,
+  getUserByAdmin,
+  updateUserByAdmin,
+  deleteUserByAdmin,
+  passwordforget,
+  resetPassword,
+};

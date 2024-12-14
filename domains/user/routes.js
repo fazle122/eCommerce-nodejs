@@ -14,6 +14,8 @@ import {
   googleLogin,
   addFavourite,
   updatePassword,
+  passwordforget,
+  resetPassword,
 } from "./controller.js";
 import asyncHandler from "../../middleware/asyncHandler.js";
 
@@ -33,6 +35,8 @@ router.post("/register", registerUser);
 router.post("/logout", logoutUser);
 router.post("/login", loginUser);
 router.post("/googleLogin", googleLogin);
+router.route("/password/forgot").post(passwordforget);
+router.route("/password/reset/:token").put(resetPassword);
 router
   .route("/profile")
   .get(protect, getUserProfile)
